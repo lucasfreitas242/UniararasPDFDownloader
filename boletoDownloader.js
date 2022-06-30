@@ -4,14 +4,45 @@ const chromeDriver = require('chromedriver');
 const os = require('os');
 const fs = require('fs');
 
+const sgMail = require('@sendgrid/mail');
+
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+
 let windowsUserName = os.userInfo().username;
+
 const downloadDirectory = `/Users/${windowsUserName}/Desktop/BoletosUniararas`;
+let newPath = '';
 
 
 chrome.setDefaultService(new chrome.ServiceBuilder(chromeDriver.path).build());
 
-function validateDownloadDirectory() {
+const sendEmail = async () => {
+    sgMail.setApiKey("YOUR_API_KEY");
+    let fileToBeSended = newPath;
+    let attachment = fs.readFileSync(fileToBeSended).toString("base64");
+    sleep(2000);
+    
+    const msg = {
+        to: 'TO_EMAIL',
+        from: 'FROM_EMAIL',
+        subject: 'E-mail de teste',
+        text: 'Boleto da Uniararas que vence este mês!',
+        attachments: [
+            {
+              content: attachment,
+              filename: "Boleto Uniararas.pdf",
+              type: "application/pdf",
+              disposition: "attachment"
+            }
+          ]
+    };
+    
+    sgMail.send(msg).catch(err => {
+        console.log(err)
+    });
+}
+
+const validateDownloadDirectory = async () => {
     if (!fs.existsSync(downloadDirectory)){
         fs.mkdir(downloadDirectory, (err) => {
             if (err) {
@@ -26,13 +57,13 @@ function validateDownloadDirectory() {
     }
 }
 
-function changePDFDirectory() {
+const changePDFDirectory = async() => {
     let oldPath = `/Users/${windowsUserName}/Downloads/`;
     let file = fs.readdirSync(oldPath).filter(fn => fn.startsWith('Boleto_-_'))[0];
     console.log(file);
     oldPath = oldPath + file;
     updatedFile = file;
-    var newPath = (downloadDirectory + "/" + updatedFile);
+    newPath = (downloadDirectory + "/" + updatedFile);
 
     fs.copyFile(oldPath, newPath, function (err) {
         if (err) throw err
@@ -50,9 +81,9 @@ const accessPDFDownloadPage = async ()  => {
     await driver.get('https://schoolnet.uniararas.br/');
     const userNameBar = await driver.findElement(By.xpath('//*[@id="usuario-input"]'));
     const userPasswordBar = await driver.findElement(By.xpath('//*[@id="senha-input"]'));
-    await userNameBar.sendKeys('106760');
+    await userNameBar.sendKeys('YOUR_STUDENT_ID');
     await sleep(1000);
-    await userPasswordBar.sendKeys('coxinha2412')
+    await userPasswordBar.sendKeys('YOUR_PASSWORD')
     await userPasswordBar.sendKeys(Key.ENTER);
     await sleep(1000);
     const financialOption = await driver.findElement(By.xpath('//*[@id="navbar-menu"]/li[2]/a'))
@@ -67,8 +98,12 @@ const accessPDFDownloadPage = async ()  => {
     await sleep(2000);
     await downloadButton.click();
 
-    await sleep(2000);
+    await sleep(5000);
     changePDFDirectory();
+    await sleep(5000);
+    sendEmail();
 }
 
+
 accessPDFDownloadPage();
+
