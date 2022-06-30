@@ -1,19 +1,58 @@
 const {Builder, By, Key} = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
 const chromeDriver = require('chromedriver');
+const os = require('os');
+const fs = require('fs');
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+let windowsUserName = os.userInfo().username;
+const downloadDirectory = `/Users/${windowsUserName}/Desktop/BoletosUniararas`;
+
 
 chrome.setDefaultService(new chrome.ServiceBuilder(chromeDriver.path).build());
 
+function validateDownloadDirectory() {
+    if (!fs.existsSync(downloadDirectory)){
+        fs.mkdir(downloadDirectory, (err) => {
+            if (err) {
+                console.log(err);
+                return
+            }
+    
+            console.log("Diretório criado! =)")
+        });
+    } else {
+        console.log('Diretório já existe!')
+    }
+}
+
+function changePDFDirectory() {
+    let oldPath = `/Users/${windowsUserName}/Downloads/`;
+    let file = fs.readdirSync(oldPath).filter(fn => fn.startsWith('Boleto_-_'))[0];
+    console.log(file);
+    oldPath = oldPath + file;
+    updatedFile = file;
+    var newPath = (downloadDirectory + "/" + updatedFile);
+
+    fs.copyFile(oldPath, newPath, function (err) {
+        if (err) throw err
+        console.log('Arquivo copiado com sucesso!')
+      })
+
+}
+
+
 const accessPDFDownloadPage = async ()  => {
-    let driver = await new Builder().forBrowser('chrome').build();
+
+    validateDownloadDirectory();
+
+    let driver = await new Builder().forBrowser('chrome').setChromeOptions(new chrome.Options()).build();
     await driver.get('https://schoolnet.uniararas.br/');
     const userNameBar = await driver.findElement(By.xpath('//*[@id="usuario-input"]'));
     const userPasswordBar = await driver.findElement(By.xpath('//*[@id="senha-input"]'));
-    await userNameBar.sendKeys('YOUR_STUDENT_ID');
+    await userNameBar.sendKeys('106760');
     await sleep(1000);
-    await userPasswordBar.sendKeys('YOUR_PASSWORD')
+    await userPasswordBar.sendKeys('coxinha2412')
     await userPasswordBar.sendKeys(Key.ENTER);
     await sleep(1000);
     const financialOption = await driver.findElement(By.xpath('//*[@id="navbar-menu"]/li[2]/a'))
@@ -27,6 +66,9 @@ const accessPDFDownloadPage = async ()  => {
     const downloadButton = await driver.findElement(By.xpath('//*[@id="btn-dwnBoleto"]'));
     await sleep(2000);
     await downloadButton.click();
+
+    await sleep(2000);
+    changePDFDirectory();
 }
 
 accessPDFDownloadPage();
